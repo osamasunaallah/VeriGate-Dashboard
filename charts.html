@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Charts - Inventory Control</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#0f172a">
+  <link rel="icon" href="icon.png">
+
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="app.js"></script>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="navbar">
+    <div class="nav-inner">
+      <div class="brand">📦 <span>Inventory Control</span></div>
+
+      <div class="nav-links">
+        <a href="index.html">Dashboard</a>
+        <a class="active" href="charts.html">Charts</a>
+        <a href="verify.html">Verify</a>
+        <a href="inventory.html">Inventory</a>
+      </div>
+
+      <div class="admin-actions">
+        <span id="adminName" class="admin-pill">Admin</span>
+        <button class="logout-btn" onclick="logoutAdmin()">Logout</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="container">
+    <div class="hero">
+      <h1>Analytics & Daily Statistics</h1>
+      <p>Driver counts, approvals, rejections, and daily traffic visualization.</p>
+    </div>
+
+    <div class="grid grid-2">
+      <div class="card">
+        <h3>Entries per Driver</h3>
+        <canvas id="driverChart"></canvas>
+      </div>
+
+      <div class="card">
+        <h3>Approved vs Rejected</h3>
+        <canvas id="statusChart"></canvas>
+      </div>
+
+      <div class="card" style="grid-column: 1 / -1;">
+        <h3>Daily Entries</h3>
+        <canvas id="dailyChart"></canvas>
+      </div>
+    </div>
+
+    <div class="footer-note">
+      Live data from Firebase Realtime Database<br>
+      Created by <strong>Osama</strong>
+    </div>
+  </div>
+
+  <script>
+    requireAdminLogin();
+    document.getElementById("adminName").textContent =
+      localStorage.getItem("truck_admin_user") || "Admin";
+
+    const driverChart = new Chart(document.getElementById("driverChart"), {
+      type: "bar",
+      data: { labels: [], datasets: [{ label: "Entries", data: [] }] },
+      options: { responsive: true }
+    });
+
+    const statusChart = new Chart(document.getElementById("statusChart"), {
+      type: "doughnut",
+      data: { labels: ["Approved", "Rejected"], datasets: [{ data: [0, 0] }] },
+      options: { responsive: true }
+    });
+
+    const dailyChart = new Chart(document.getElementById("dailyChart"), {
+      type: "line",
+      data: { labels: [], datasets: [{ label: "Daily Entries", data: [], tension: 0.3 }] },
+      options: { responsive: true }
+    });
+
+    loadEntries(entries => {
+      const driverCounts = {};
+      const dailyCounts = {};
+      let approved = 0;
+      let rejected = 0;
+
+      entries.forEach(entry => {
+        const name = entry.driver_name || "Unknown";
+        driverCounts[name] = (driverCounts[name] || 0) + 1;
+
+        const day = formatDateOnly(entry.server_time) || "Unknown";
+        dailyCounts[day] = (dailyCounts[day] || 0) + 1;
+
+        if (entry.status === "approved") approved++;
+        else rejected++;
+      });
+
+      driverChart.data.labels = Object.keys(driverCounts);
+      driverChart.data.datasets[0].data = Object.values(driverCounts);
+      driverChart.update();
+
+      statusChart.data.datasets[0].data = [approved, rejected];
+      statusChart.update();
+
+      const days = Object.keys(dailyCounts).sort();
+      dailyChart.data.labels = days;
+      dailyChart.data.datasets[0].data = days.map(d => dailyCounts[d]);
+      dailyChart.update();
+    });
+  </script>
+</body>
+</html>

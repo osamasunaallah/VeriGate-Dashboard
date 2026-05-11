@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Inventory - Inventory Control</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#0f172a">
+  <link rel="icon" href="icon.png">
+
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+  <script src="app.js"></script>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="navbar">
+    <div class="nav-inner">
+      <div class="brand">📦 <span>Inventory Control</span></div>
+
+      <div class="nav-links">
+        <a href="index.html">Dashboard</a>
+        <a href="charts.html">Charts</a>
+        <a href="verify.html">Verify</a>
+        <a class="active" href="inventory.html">Inventory</a>
+      </div>
+
+      <div class="admin-actions">
+        <span id="adminName" class="admin-pill">Admin</span>
+        <button class="logout-btn" onclick="logoutAdmin()">Logout</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="container">
+    <div class="hero">
+      <h1>Inventory Management</h1>
+      <p>Add shipments and view live registered shipment records in table format.</p>
+    </div>
+
+    <!-- Add / Edit Shipment -->
+    <div class="card">
+      <h3>Add / Edit Shipment</h3>
+
+      <div class="filters">
+        <input id="po" placeholder="PO Number">
+        <input id="company" placeholder="Company Name">
+        <input id="driver" placeholder="Driver Name">
+        <input id="shipmentDetails" placeholder="Shipment Details">
+      </div>
+
+      <h3>Shipment Components (Max 5)</h3>
+      <div id="items"></div>
+
+      <div class="filters">
+        <button onclick="addItem()">+ Add Component</button>
+        <button onclick="save()">Save Shipment</button>
+        <button onclick="clearForm()">Clear</button>
+      </div>
+    </div>
+
+    <!-- Inventory definitions -->
+    <div class="card" style="margin-top:18px;">
+      <h3>All Shipment Definitions</h3>
+      <div id="inventoryDefinitions"></div>
+    </div>
+
+    <!-- Live linked records -->
+    <div class="card" style="margin-top:18px;">
+      <h3>Live Registered Driver Shipment Records</h3>
+      <div id="liveRecords"></div>
+    </div>
+
+    <div class="footer-note">
+      Live data from Firebase Realtime Database<br>
+      Created by <strong>Osama</strong>
+    </div>
+  </div>
+
+  <script>
+    requireAdminLogin();
+    document.getElementById("adminName").textContent =
+      localStorage.getItem("truck_admin_user") || "Admin";
+
+    const itemsDiv = document.getElementById("items");
+    const inventoryDefinitions = document.getElementById("inventoryDefinitions");
+    const liveRecords = document.getElementById("liveRecords");
+
+    let inventoryData = {};
+    let truckEntries = [];
+
+    function normalizePO(value) {
+      return (value || "").toString().trim().toUpperCase();
+    }
+
+    function addItem(name = "", qty = "") {
+      if (itemsDiv.children.length >= 5) {
+        alert("Maximum 5 components only.");
+        return;
+      }
+
+      const row = document.createElement("div");
+      row.className = "filters";
+      row.innerHTML = `
+        <input placeholder="Component Name" value="${name}">
+        <input placeholder="Quantity" value="${qty}">
+      `;
+      itemsDiv.appendChild(row);
+    }
+
+    function clearForm() {
+      document.getElementById("po").value = "";
+      document.getElementById("company").value = "";
+      document.getElementById("driver").value = "";
+      document.getElementById("shipmentDetails").value = "";
+      itemsDiv.innerHTML = "";
+      addItem();
+    }
+
+    function save() {
+      const po = normalizePO(document.getElementById("po").value);
+      const company = document.getElementById("company").value.trim();
+      const driver = document.getElementById("driver").value.trim();
+      const shipmentDetails = document.getElementById("shipmentDetails").value.trim();
+
+      if (!po || !company || !driver || !shipmentDetails) {
+        alert("Please fill all main fields.");
+        return;
+      }
+
+      let items = [];
+
+      Array.from(itemsDiv.children).forEach(row => {
+        const inputs = row.querySelectorAll("input");
+        const name = inputs[0].value.trim();
+        const qty = inputs[1].value.trim();
+
+        if (name && qty) {
+          items.push({ name, qty });
+        }
+      });
+
+      if (items.length === 0) {
+        alert("Add at least one component.");
+        return;
+      }
+
+      saveInventory(po, {
+        company,
+        driver,
+        shipmentDetails,
+        items
+      });
+
+      alert("Shipment saved successfully ✔");
+      clearForm();
+    }
+
+    function editInventory(po) {
+      const d = inventoryData[po];
+      if (!d) return;
+
+      document.getElementById("po").value = po;
+      document.getElementById("company").value = d.company || "";
+      document.getElementById("driver").value = d.driver || "";
+      document.getElementById("shipmentDetails").value = d.shipmentDetails || "";
+
+      itemsDiv.innerHTML = "";
+      (d.items || []).forEach(item => addItem(item.name, item.qty));
+      if ((d.items || []).length === 0) addItem();
+
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+
+    function removeInventory(po) {
+      if (confirm("Delete this shipment definition?")) {
+        deleteInventory(po);
+      }
+    }
+
+    function renderDefinitions() {
+      inventoryDefinitions.innerHTML = "";
+
+      const keys = Object.keys(inventoryData);
+
+      if (keys.length === 0) {
+        inventoryDefinitions.innerHTML = `<p style="color:#cbd5e1;">No shipment definitions found.</p>`;
+        return;
+      }
+
+      let html = `
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>PO Number</th>
+                <th>Company</th>
+                <th>Driver</th>
+                <th>Shipment Details</th>
+                <th>Components</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+      `;
+
+      keys.forEach(po => {
+        const d = inventoryData[po];
+        let components = "";
+
+        (d.items || []).forEach((item, index) => {
+          components += `${index + 1}. ${item.name || "-"} (${item.qty || "-"})<br>`;
+        });
+
+        html += `
+          <tr>
+            <td>${po}</td>
+            <td>${d.company || "-"}</td>
+            <td>${d.driver || "-"}</td>
+            <td>${d.shipmentDetails || "-"}</td>
+            <td>${components || "-"}</td>
+            <td>
+              <button onclick="editInventory('${po}')">Edit</button>
+              <button onclick="removeInventory('${po}')">Delete</button>
+            </td>
+          </tr>
+        `;
+      });
+
+      html += `
+            </tbody>
+          </table>
+        </div>
+      `;
+
+      inventoryDefinitions.innerHTML = html;
+    }
+
+    function renderLiveRecords() {
+      liveRecords.innerHTML = "";
+
+      if (truckEntries.length === 0) {
+        liveRecords.innerHTML = `<p style="color:#cbd5e1;">No registered driver records found yet.</p>`;
+        return;
+      }
+
+      let html = `
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Driver</th>
+                <th>Company</th>
+                <th>PO Number</th>
+                <th>Shipment Details</th>
+                <th>Components</th>
+                <th>Entry Time</th>
+              </tr>
+            </thead>
+            <tbody>
+      `;
+
+      truckEntries.forEach(entry => {
+        const po = normalizePO(entry.po_number);
+        const inv = inventoryData[po];
+
+        let company = "-";
+        let shipmentDetails = "-";
+        let components = `<span style="color:#fca5a5;">No details found</span>`;
+
+        if (inv) {
+          company = inv.company || "-";
+          shipmentDetails = inv.shipmentDetails || "-";
+          components = "";
+
+          (inv.items || []).forEach((item, index) => {
+            components += `${index + 1}. ${item.name || "-"} (${item.qty || "-"})<br>`;
+          });
+
+          if (!components) {
+            components = "-";
+          }
+        }
+
+        html += `
+          <tr>
+            <td>${entry.driver_name || "-"}</td>
+            <td>${company}</td>
+            <td>${po || "-"}</td>
+            <td>${shipmentDetails}</td>
+            <td>${components}</td>
+            <td>${formatDateTime(entry.server_time)}</td>
+          </tr>
+        `;
+      });
+
+      html += `
+            </tbody>
+          </table>
+        </div>
+      `;
+
+      liveRecords.innerHTML = html;
+    }
+
+    function refreshAll() {
+      renderDefinitions();
+      renderLiveRecords();
+    }
+
+    clearForm();
+
+    loadInventory(data => {
+      const normalized = {};
+      Object.keys(data || {}).forEach(key => {
+        normalized[normalizePO(key)] = data[key];
+      });
+      inventoryData = normalized;
+      refreshAll();
+    });
+
+    loadEntries(entries => {
+      truckEntries = entries || [];
+      refreshAll();
+    });
+  </script>
+</body>
+</html>
+    

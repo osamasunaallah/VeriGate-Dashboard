@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Inventory Control</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#0f172a">
+  <link rel="icon" href="icon.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Inventory Control">
+  <link rel="apple-touch-icon" href="icon.png">
+
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+  <script src="app.js"></script>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div id="splash">
+    <h1>📦 Inventory Control</h1>
+    <p>Created by Osama</p>
+  </div>
+
+  <div class="navbar">
+    <div class="nav-inner">
+      <div class="brand">📦 <span>Inventory Control</span></div>
+
+      <div class="nav-links">
+        <a class="active" href="index.html">Dashboard</a>
+        <a href="charts.html">Charts</a>
+        <a href="verify.html">Verify</a>
+        <a href="inventory.html">Inventory</a>
+      </div>
+
+      <div class="admin-actions">
+        <span id="adminName" class="admin-pill">Admin</span>
+        <button class="logout-btn" onclick="logoutAdmin()">Logout</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="container">
+    <div class="hero">
+      <h1>Inventory Control Dashboard</h1>
+      <p>Live monitoring for truck entry operations, approvals, and PO tracking.</p>
+    </div>
+
+    <div class="grid grid-4">
+      <div class="card stat-card">
+        <div class="stat-title">Total Entries</div>
+        <div class="stat-value" id="totalEntries">0</div>
+        <div class="stat-hint">All recorded scans</div>
+      </div>
+
+      <div class="card stat-card">
+        <div class="stat-title">Approved</div>
+        <div class="stat-value" id="approvedEntries">0</div>
+        <div class="stat-hint">Known drivers</div>
+      </div>
+
+      <div class="card stat-card">
+        <div class="stat-title">Rejected</div>
+        <div class="stat-value" id="rejectedEntries">0</div>
+        <div class="stat-hint">Unknown cards</div>
+      </div>
+
+      <div class="card stat-card">
+        <div class="stat-title">Entries Today</div>
+        <div class="stat-value" id="todayEntries">0</div>
+        <div class="stat-hint">Current date only</div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:18px;">
+      <div class="filters">
+        <select id="driverFilter">
+          <option value="all">All Drivers</option>
+          <option value="Ahmed">Ahmed</option>
+          <option value="Yasin">Yasin</option>
+          <option value="Ibrahim">Ibrahim</option>
+          <option value="Unknown">Unknown</option>
+        </select>
+
+        <input type="date" id="dateFilter" />
+        <button id="clearFilters">Clear Filters</button>
+        <button id="exportExcel">Export Excel</button>
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Driver</th>
+              <th>ID</th>
+              <th>Plate</th>
+              <th>PO Number</th>
+              <th>UID</th>
+              <th>Status</th>
+              <th>Entry Time</th>
+            </tr>
+          </thead>
+          <tbody id="entriesBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="footer-note">
+      Live data from Firebase Realtime Database<br>
+      Created by <strong>Osama</strong>
+    </div>
+  </div>
+
+  <audio id="sound" preload="auto">
+    <source src="https://actions.google.com/sounds/v1/alarms/beep_short.ogg" type="audio/ogg">
+  </audio>
+
+  <script>
+    requireAdminLogin();
+
+    document.getElementById("adminName").textContent =
+      localStorage.getItem("truck_admin_user") || "Admin";
+
+    const totalEntriesEl = document.getElementById("totalEntries");
+    const approvedEntriesEl = document.getElementById("approvedEntries");
+    const rejectedEntriesEl = document.getElementById("rejectedEntries");
+    const todayEntriesEl = document.getElementById("todayEntries");
+    const entriesBody = document.getElementById("entriesBody");
+    const driverFilter = document.getElementById("driverFilter");
+    const dateFilter = document.getElementById("dateFilter");
+    const clearFilters = document.getElementById("clearFilters");
+    const exportExcel = document.getElementById("exportExcel");
+    const sound = document.getElementById("sound");
+
+    sound.volume = 1.0;
+
+    let firstLoad = true;
+    let latestKey = null;
+    let allEntries = [];
+
+    function getFilteredEntries() {
+      return allEntries.filter(entry => {
+        if (driverFilter.value !== "all" && entry.driver_name !== driverFilter.value) return false;
+        if (dateFilter.value && formatDateOnly(entry.server_time) !== dateFilter.value) return false;
+        return true;
+      });
+    }
+
+    function playEntrySound() {
+      sound.currentTime = 0;
+      sound.play().catch(() => {});
+    }
+
+    function renderTable() {
+      entriesBody.innerHTML = "";
+      const filtered = getFilteredEntries();
+
+      filtered.forEach((entry, index) => {
+        const tr = document.createElement("tr");
+
+        if (!firstLoad && index === 0 && entry.key !== latestKey) {
+          tr.classList.add("flash-row");
+          playEntrySound();
+        }
+
+        tr.innerHTML = `
+          <td>${entry.driver_name || "-"}</td>
+          <td>${entry.driver_id || "-"}</td>
+          <td>${entry.plate_number || "-"}</td>
+          <td>${entry.po_number || "-"}</td>
+          <td>${entry.uid || "-"}</td>
+          <td>${getStatusBadge(entry.status)}</td>
+          <td>${formatDateTime(entry.server_time)}</td>
+        `;
+
+        entriesBody.appendChild(tr);
+      });
+
+      if (filtered.length > 0) latestKey = filtered[0].key;
+      firstLoad = false;
+    }
+
+    function renderStats() {
+      totalEntriesEl.textContent = allEntries.length;
+
+      const approved = allEntries.filter(e => e.status === "approved").length;
+      const rejected = allEntries.filter(e => e.status === "rejected").length;
+
+      approvedEntriesEl.textContent = approved;
+      rejectedEntriesEl.textContent = rejected;
+
+      const today = new Date().toISOString().split("T")[0];
+      const todayCount = allEntries.filter(e => formatDateOnly(e.server_time) === today).length;
+      todayEntriesEl.textContent = todayCount;
+    }
+
+    function exportToExcel() {
+      const filtered = getFilteredEntries();
+
+      const rows = filtered.map(entry => ({
+        "Driver Name": entry.driver_name || "-",
+        "Driver ID": entry.driver_id || "-",
+        "Plate Number": entry.plate_number || "-",
+        "PO Number": entry.po_number || "-",
+        "UID": entry.uid || "-",
+        "Status": entry.status || "-",
+        "Entry Time": formatDateTime(entry.server_time)
+      }));
+
+      if (rows.length === 0) {
+        alert("No data to export.");
+        return;
+      }
+
+      const worksheet = XLSX.utils.json_to_sheet(rows);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, "Entries");
+
+      const today = new Date().toISOString().split("T")[0];
+      XLSX.writeFile(workbook, `inventory_control_${today}.xlsx`);
+    }
+
+    loadEntries(entries => {
+      allEntries = entries;
+      renderStats();
+      renderTable();
+    });
+
+    driverFilter.addEventListener("change", renderTable);
+    dateFilter.addEventListener("change", renderTable);
+
+    clearFilters.addEventListener("click", () => {
+      driverFilter.value = "all";
+      dateFilter.value = "";
+      renderTable();
+    });
+
+    exportExcel.addEventListener("click", exportToExcel);
+
+    window.addEventListener("load", () => {
+      const splash = document.getElementById("splash");
+      if (window.innerWidth <= 640) {
+        setTimeout(() => splash.style.display = "none", 1200);
+      } else {
+        splash.style.display = "none";
+      }
+    });
+
+    if ("serviceWorker" in navigator && window.innerWidth <= 640) {
+      navigator.serviceWorker.register("sw.js");
+    }
+
+    let deferredPrompt;
+    window.addEventListener("beforeinstallprompt", (e) => {
+      if (window.innerWidth > 640) return;
+
+      e.preventDefault();
+      deferredPrompt = e;
+
+      const installBtn = document.createElement("button");
+      installBtn.innerText = "Install App";
+      installBtn.className = "mobile-install-btn";
+
+      installBtn.onclick = async () => {
+        if (!deferredPrompt) return;
+        deferredPrompt.prompt();
+        deferredPrompt = null;
+        installBtn.remove();
+      };
+
+      document.querySelector(".hero").appendChild(installBtn);
+    });
+  </script>
+</body>
+</html>

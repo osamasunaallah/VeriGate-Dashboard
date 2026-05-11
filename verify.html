@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Verify - Inventory Control</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#0f172a">
+  <link rel="icon" href="icon.png">
+
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+  <script src="app.js"></script>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="navbar">
+    <div class="nav-inner">
+      <div class="brand">📦 <span>Inventory Control</span></div>
+
+      <div class="nav-links">
+        <a href="index.html">Dashboard</a>
+        <a href="charts.html">Charts</a>
+        <a class="active" href="verify.html">Verify</a>
+        <a href="inventory.html">Inventory</a>
+      </div>
+
+      <div class="admin-actions">
+        <span id="adminName" class="admin-pill">Admin</span>
+        <button class="logout-btn" onclick="logoutAdmin()">Logout</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="container">
+    <div class="hero">
+      <h1>Verify Driver & PO</h1>
+      <p>Search by PO Number, UID, driver name, driver ID, or plate number.</p>
+    </div>
+
+    <div class="verify-box">
+      <input id="searchInput" class="verify-input" type="text" placeholder="Enter PO Number / UID / Name / ID / Plate..." />
+
+      <div id="verifyResult" class="verify-result idle">
+        <div>
+          <h2>Ready</h2>
+          <p>Enter PO number or driver information to verify.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="footer-note">
+      Live data from Firebase Realtime Database<br>
+      Created by <strong>Osama</strong>
+    </div>
+  </div>
+
+  <script>
+    requireAdminLogin();
+    document.getElementById("adminName").textContent =
+      localStorage.getItem("truck_admin_user") || "Admin";
+
+    const searchInput = document.getElementById("searchInput");
+    const verifyResult = document.getElementById("verifyResult");
+    let allEntries = [];
+
+    function renderIdle() {
+      verifyResult.className = "verify-result idle";
+      verifyResult.innerHTML = `
+        <div>
+          <h2>Ready</h2>
+          <p>Enter PO number or driver information to verify.</p>
+        </div>
+      `;
+    }
+
+    function renderApproved(entry) {
+      verifyResult.className = "verify-result approved";
+      verifyResult.innerHTML = `
+        <div>
+          <h2>Approved ✔</h2>
+          <p><strong>Name:</strong> ${entry.driver_name}</p>
+          <p><strong>ID:</strong> ${entry.driver_id}</p>
+          <p><strong>Plate:</strong> ${entry.plate_number}</p>
+          <p><strong>PO Number:</strong> ${entry.po_number || "-"}</p>
+          <p><strong>UID:</strong> ${entry.uid}</p>
+          <p><strong>Last Entry:</strong> ${formatDateTime(entry.server_time)}</p>
+        </div>
+      `;
+    }
+
+    function renderRejected(entry) {
+      verifyResult.className = "verify-result rejected";
+      verifyResult.innerHTML = `
+        <div>
+          <h2>Rejected ✖</h2>
+          <p><strong>Name:</strong> ${entry.driver_name || "Unknown"}</p>
+          <p><strong>ID:</strong> ${entry.driver_id || "Unknown"}</p>
+          <p><strong>Plate:</strong> ${entry.plate_number || "Unknown"}</p>
+          <p><strong>PO Number:</strong> ${entry.po_number || "-"}</p>
+          <p><strong>UID:</strong> ${entry.uid || "Unknown"}</p>
+          <p><strong>Last Entry:</strong> ${formatDateTime(entry.server_time)}</p>
+        </div>
+      `;
+    }
+
+    function verifyDriver() {
+      const q = searchInput.value.trim().toLowerCase();
+
+      if (!q) {
+        renderIdle();
+        return;
+      }
+
+      const found = allEntries.find(entry =>
+        (entry.po_number || "").toLowerCase().includes(q) ||
+        (entry.uid || "").toLowerCase().includes(q) ||
+        (entry.driver_name || "").toLowerCase().includes(q) ||
+        (entry.driver_id || "").toLowerCase().includes(q) ||
+        (entry.plate_number || "").toLowerCase().includes(q)
+      );
+
+      if (!found) {
+        verifyResult.className = "verify-result rejected";
+        verifyResult.innerHTML = `
+          <div>
+            <h2>Not Found</h2>
+            <p>No matching PO or driver found.</p>
+          </div>
+        `;
+        return;
+      }
+
+      if (found.status === "approved") renderApproved(found);
+      else renderRejected(found);
+    }
+
+    loadEntries(entries => {
+      allEntries = entries;
+      verifyDriver();
+    });
+
+    searchInput.addEventListener("input", verifyDriver);
+  </script>
+</body>
+</html>
