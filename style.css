@@ -21,6 +21,7 @@ body {
   font-family: Arial, sans-serif;
   color: var(--text);
   min-height: 100vh;
+  min-height: 100dvh;
   background:
     radial-gradient(circle at top right, rgba(20,184,166,0.22), transparent 25%),
     radial-gradient(circle at top left, rgba(14,165,233,0.18), transparent 25%),
@@ -342,6 +343,7 @@ canvas {
 
 .intro-screen {
   min-height: 100vh;
+  min-height: 100dvh;
   display: grid;
   place-items: center;
   padding: 20px;
