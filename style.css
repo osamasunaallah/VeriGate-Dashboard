@@ -1,10 +1,14 @@
 :root {
-  --bg: #0f172a;
-  --card: rgba(17, 24, 39, 0.88);
-  --text: #f8fafc;
-  --muted: #cbd5e1;
-  --primary: #14b8a6;
-  --primary-2: #0ea5e9;
+  --bg: #050505;
+  --card: #121212;
+  --text: #F5F5F5;
+  --muted: #C4C4C4;
+  --primary: #E8E8E8;
+  --primary-2: #E8E8E8;
+  --on-primary: #050505;
+  --pop: #2D6BFF;
+  --on-pop: #FFFFFF;
+  --pop-shadow: 0 10px 24px -10px rgba(45,107,255,.6);
   --border: rgba(255,255,255,0.08);
   --shadow: 0 20px 50px rgba(0,0,0,0.28);
 }
@@ -22,10 +26,7 @@ body {
   color: var(--text);
   min-height: 100vh;
   min-height: 100dvh;
-  background:
-    radial-gradient(circle at top right, rgba(20,184,166,0.22), transparent 25%),
-    radial-gradient(circle at top left, rgba(14,165,233,0.18), transparent 25%),
-    linear-gradient(135deg, #0b1220, #111827 40%, #0f172a);
+  background: var(--bg);
 }
 
 a {
@@ -43,8 +44,7 @@ a {
   position: sticky;
   top: 0;
   z-index: 20;
-  backdrop-filter: blur(10px);
-  background: rgba(15, 23, 42, 0.78);
+  background: rgba(5, 5, 5, 0.94);
   border-bottom: 1px solid var(--border);
 }
 
@@ -85,7 +85,8 @@ a {
 
 .nav-links a:hover,
 .nav-links a.active {
-  background: linear-gradient(135deg, var(--primary), var(--primary-2));
+  background: var(--primary);
+  color: var(--on-primary);
   border-color: transparent;
 }
 
@@ -110,7 +111,8 @@ a {
   padding: 10px 14px;
   cursor: pointer;
   color: white;
-  background: linear-gradient(135deg, #ef4444, #dc2626);
+  background: #DC2626;
+  box-shadow: none;
   font-weight: 700;
 }
 
@@ -199,10 +201,11 @@ button {
   min-height: 46px;
 }
 
-.filters button,
 button {
   cursor: pointer;
-  background: linear-gradient(135deg, var(--primary), var(--primary-2));
+  background: var(--pop);
+  color: var(--on-pop);
+  box-shadow: var(--pop-shadow);
   border: none;
   font-weight: 700;
 }
@@ -256,7 +259,7 @@ thead th {
 }
 
 @keyframes flash {
-  from { background: rgba(20,184,166,0.22); }
+  from { background: rgba(45,107,255,0.22); }
   to { background: transparent; }
 }
 
@@ -319,7 +322,7 @@ canvas {
 #splash {
   position: fixed;
   inset: 0;
-  background: linear-gradient(135deg, #0b1220, #111827 40%, #0f172a);
+  background: var(--bg);
   color: white;
   display: none;
   flex-direction: column;
@@ -336,8 +339,9 @@ canvas {
   padding: 12px 16px;
   font-size: 14px;
   font-weight: 700;
-  color: white;
-  background: linear-gradient(135deg, var(--primary), var(--primary-2));
+  color: var(--on-pop);
+  background: var(--pop);
+  box-shadow: var(--pop-shadow);
   cursor: pointer;
 }
 
@@ -364,11 +368,11 @@ canvas {
   margin-bottom: 14px;
   padding: 8px 14px;
   border-radius: 999px;
-  background: rgba(20,184,166,0.15);
-  color: #99f6e4;
+  background: rgba(255,255,255,0.08);
+  color: #E8E8E8;
   font-size: 13px;
   font-weight: 700;
-  border: 1px solid rgba(20,184,166,0.35);
+  border: 1px solid rgba(255,255,255,0.22);
 }
 
 .login-form {
@@ -462,3 +466,5 @@ canvas {
     min-width: 680px;
   }
 }
+/* 70 / 20 / 10 (22.11.2026): filter chips use the blue, not the lime */
+.filters button{ background: var(--primary); color: var(--on-primary); box-shadow: none; }

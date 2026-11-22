@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
   <link rel="manifest" href="manifest.json">
-  <meta name="theme-color" content="#0f172a">
+  <meta name="theme-color" content="#050505">
   <link rel="icon" href="icon.png">
 
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
@@ -65,24 +65,25 @@
 
   <script>
     requireAdminLogin();
+    if (window.Chart) { Chart.defaults.color = "#C4C4C4"; Chart.defaults.borderColor = "rgba(255,255,255,0.08)"; }
     document.getElementById("adminName").textContent =
       localStorage.getItem("truck_admin_user") || "Admin";
 
     const driverChart = new Chart(document.getElementById("driverChart"), {
       type: "bar",
-      data: { labels: [], datasets: [{ label: "Entries", data: [] }] },
+      data: { labels: [], datasets: [{ label: "Entries", data: [], backgroundColor: "#E8E8E8", borderRadius: 6 }] },
       options: { responsive: true }
     });
 
     const statusChart = new Chart(document.getElementById("statusChart"), {
       type: "doughnut",
-      data: { labels: ["Approved", "Rejected"], datasets: [{ data: [0, 0] }] },
+      data: { labels: ["Approved", "Rejected"], datasets: [{ data: [0, 0], backgroundColor: ["#7EE3B5", "#FF8B8B"], borderColor: "#121212", borderWidth: 3 }] },
       options: { responsive: true }
     });
 
     const dailyChart = new Chart(document.getElementById("dailyChart"), {
       type: "line",
-      data: { labels: [], datasets: [{ label: "Daily Entries", data: [], tension: 0.3 }] },
+      data: { labels: [], datasets: [{ label: "Daily Entries", data: [], tension: 0.3, borderColor: "#2D6BFF", backgroundColor: "#2D6BFF", borderWidth: 2.5 }] },
       options: { responsive: true }
     });
 
