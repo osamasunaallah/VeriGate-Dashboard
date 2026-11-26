@@ -22,7 +22,7 @@ html, body {
 }
 
 body {
-  font-family: Arial, sans-serif;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   color: var(--text);
   min-height: 100vh;
   min-height: 100dvh;
@@ -319,19 +319,6 @@ canvas {
   text-align: center;
 }
 
-#splash {
-  position: fixed;
-  inset: 0;
-  background: var(--bg);
-  color: white;
-  display: none;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  z-index: 9999;
-  text-align: center;
-}
-
 .mobile-install-btn {
   margin-top: 14px;
   border: none;
@@ -413,10 +400,6 @@ canvas {
 }
 
 @media (max-width: 640px) {
-  #splash {
-    display: flex;
-  }
-
   .container {
     width: 92%;
     padding: 16px 0 28px;
@@ -468,3 +451,28 @@ canvas {
 }
 /* 70 / 20 / 10 (22.11.2026): filter chips use the blue, not the lime */
 .filters button{ background: var(--primary); color: var(--on-primary); box-shadow: none; }
+
+/* Apple design pass (26.11.2026, Osama: "apply the apple design skill"). No layout or colour changes:
+   the system font (as on the phone), tighter tracking on big text, buttons and tabs answer the moment
+   they are pressed, a visible keyboard focus ring, and the system settings "Reduce motion",
+   "Reduce transparency" and "Increase contrast" are followed. */
+body, input, button, select, textarea { font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif; }
+.hero h1 { letter-spacing: -0.02em; line-height: 1.1; }
+.brand { letter-spacing: -0.01em; }
+.stat-value { letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+a, button, select, input, label { touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+button, .nav-links a, .mobile-install-btn, .logout-btn { transition: transform .1s ease-out, background-color .2s ease, color .2s ease, border-color .2s ease; }
+button:active, .nav-links a:active, .mobile-install-btn:active, .logout-btn:active { transform: scale(.97); }
+:focus-visible { outline: 2px solid var(--pop); outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) { button:active, .nav-links a:active, .mobile-install-btn:active, .logout-btn:active { transform: none; } }
+@media (prefers-reduced-transparency: reduce) { .navbar { background: var(--bg); } .intro-card { background: var(--card); } }
+@media (prefers-contrast: more) { :root { --border: rgba(255,255,255,0.32); --muted: #E2E2E2; } }
+
+/* Impeccable pass (26.11.2026, Osama chose "polish, keep layouts"): this is a working tool, so the polish is precision:
+   figures that line up in the tables, the browser's own surfaces in the dashboard's blue, and readable placeholders */
+td, th, .stat-value, .badge { font-variant-numeric: tabular-nums; }
+thead th { font-size: 13px; letter-spacing: .02em; color: var(--muted); font-weight: 600; }
+::selection { background: var(--pop); color: var(--on-pop); }
+html { scrollbar-color: #2B3A66 var(--bg); }
+input, textarea { caret-color: var(--pop); }
+::placeholder { color: #9A9A9A; opacity: 1; }
