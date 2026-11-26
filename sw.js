@@ -1,4 +1,4 @@
-const CACHE_NAME = "inventory-control-pwa-v4";
+const CACHE_NAME = "inventory-control-pwa-v5";
 
 const urlsToCache = [
   "./",
