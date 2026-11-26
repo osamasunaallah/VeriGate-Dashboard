@@ -20,10 +20,7 @@
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <div id="splash">
-    <h1>📦 Inventory Control</h1>
-    <p>Created by Osama</p>
-  </div>
+  <!-- 26.11.2026 (Osama: "let them be there when I land"): the phone splash screen was removed -->
 
   <div class="navbar">
     <div class="nav-inner">
@@ -239,15 +236,6 @@
     });
 
     exportExcel.addEventListener("click", exportToExcel);
-
-    window.addEventListener("load", () => {
-      const splash = document.getElementById("splash");
-      if (window.innerWidth <= 640) {
-        setTimeout(() => splash.style.display = "none", 1200);
-      } else {
-        splash.style.display = "none";
-      }
-    });
 
     if ("serviceWorker" in navigator && window.innerWidth <= 640) {
       navigator.serviceWorker.register("sw.js");
